@@ -32,11 +32,16 @@ export default async function handler(req, res) {
       });
     }
 
-    // 🌐 3. توجيه الموديلات لـ Groq API
-    let apiModelName = 'llama-3.1-70b-versatile';
-    if (selectedModel === 'deepseek-chat') apiModelName = 'deepseek-r1-distill-llama-70b';
-    if (selectedModel === 'qwen-3-instruct') apiModelName = 'qwen-2.5-coder-32b-instruct';
-    if (selectedModel === 'llama-3.1-70b-instruct') apiModelName = 'llama-3.1-70b-versatile';
+    // 🌐 3. أسماء الموديلات الرسمية والمجانية الشغالة على Groq
+    let apiModelName = 'llama-3.3-70b-versatile';
+
+    if (selectedModel === 'deepseek-chat') {
+      apiModelName = 'deepseek-r1-distill-llama-70b';
+    } else if (selectedModel === 'qwen-3-instruct') {
+      apiModelName = 'qwen-2.5-coder-32b';
+    } else if (selectedModel === 'llama-3.1-70b-instruct') {
+      apiModelName = 'llama-3.3-70b-versatile';
+    }
 
     const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
@@ -57,7 +62,12 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
-    const aiText = data.choices?.[0]?.message?.content || 'تم استلام طلبك وبانتظار الرد.';
+    
+    if (!response.ok) {
+      throw new Error(data.error?.message || 'Groq API Error');
+    }
+
+    const aiText = data.choices?.[0]?.message?.content || 'لم أتمكن من الحصول على رد.';
 
     return res.status(200).json({
       result: aiText,
