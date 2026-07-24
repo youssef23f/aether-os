@@ -20,10 +20,10 @@ export default function App() {
       {/* Hero Header */}
       <Hero />
 
-      {/* Dynamic Monaco AI Studio */}
+      {/* Dynamic Monaco AI Studio Workspace */}
       <Workspace />
 
-      {/* Navigation Modals */}
+      {/* Navigation Modals (Models, API Keys, Pricing) */}
       <NavigationModals 
         activeModal={activeModal} 
         onClose={() => setActiveModal(null)} 
