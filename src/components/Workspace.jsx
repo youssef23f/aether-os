@@ -2,24 +2,27 @@ import { useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import ChatSidebar from './ChatSidebar';
 import { 
-  Code2, Send, Play, Sparkles, Copy, Loader2, 
-  Eye, ThumbsUp, ThumbsDown, Mic, Box, PanelLeftOpen, PanelLeftClose
+  Send, Sparkles, Copy, Loader2, 
+  ThumbsUp, ThumbsDown, Mic, Box, PanelLeftOpen, PanelLeftClose, Menu, X
 } from 'lucide-react';
 
 export default function Workspace() {
-  const [activeTab, setActiveTab] = useState('editor'); // editor | preview | artifacts
+  const [activeTab, setActiveTab] = useState('editor');
   const [inputPrompt, setInputPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
 
-  // 👁️ التحكم في ظهور لوحة الكود والـ IDE (مخفية افتراضياً)
+  // 👁️ التحكم في IDE
   const [isIdeOpen, setIsIdeOpen] = useState(false);
+  
+  // 📱 التحكم في القائمة الجانبية للموبايل
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
-  // 🤖 وضع الموديل والموديل المختار
-  const [selectedModel, setSelectedModel] = useState('llama-3.3-70b-versatile');
+  // 🤖 الموديلات والـ Persona
+  const [selectedModel, setSelectedModel] = useState('auto-router');
   const [systemPersona, setSystemPersona] = useState('developer'); 
 
-  // 📂 الذاكرة الدائمة للمحادثات والمجلدات
+  // 📂 الذاكرة
   const [folders, setFolders] = useState(() => {
     const saved = localStorage.getItem('aether_folders');
     return saved ? JSON.parse(saved) : [{ id: 'f1', name: 'Web Apps' }];
@@ -34,7 +37,7 @@ export default function Workspace() {
 
   const [activeChatId, setActiveChatId] = useState('c1');
 
-  // 🎨 Artifacts Panel State
+  // 🎨 Artifacts State
   const [artifacts, setArtifacts] = useState([]);
   const [activeArtifact, setActiveArtifact] = useState(null);
 
@@ -108,7 +111,8 @@ export default function Workspace() {
     const newChat = { id: newId, title: 'محادثة جديدة', folderId: null, isPinned: false, messages: [] };
     setChats(prev => [newChat, ...prev]);
     setActiveChatId(newId);
-    setIsIdeOpen(false); // إغلاق الـ IDE مع كل محادثة جديدة
+    setIsIdeOpen(false);
+    setIsMobileSidebarOpen(false);
   };
 
   const handleCreateFolder = () => {
@@ -125,7 +129,7 @@ export default function Workspace() {
     if (activeChatId === id && chats.length > 1) setActiveChatId(chats[0].id);
   };
 
-  // ✉️ Send Message Handler
+  // ✉️ Send Message
   const handleSendMessage = async () => {
     if (!inputPrompt.trim() || loading) return;
 
@@ -134,7 +138,6 @@ export default function Workspace() {
 
     const currentChat = chats.find(c => c.id === activeChatId) || { messages: [] };
     
-    // Auto-titling
     let updatedTitle = currentChat.title;
     if (currentChat.messages.length === 0 || currentChat.title === 'محادثة جديدة') {
       updatedTitle = userText.slice(0, 25) + '...';
@@ -146,49 +149,38 @@ export default function Workspace() {
     setChats(prev => prev.map(c => c.id === activeChatId ? { ...c, title: updatedTitle, messages: updatedMessages } : c));
     setLoading(true);
 
-    // 💡 إذا كان طلب المستخدم يحتوي على كلمة كود/برمجة/تصميم، افتح لوحة الـ IDE مباشرة
     const isCodeRequested = /كود|برمج|صفحة|html|css|javascript|react|python|build|create/i.test(userText);
-    if (isCodeRequested) {
-      setIsIdeOpen(true);
-    }
-
-    // Image generation check
-    if (userText.toLowerCase().includes('صورة') || userText.toLowerCase().includes('generate image')) {
-      setTimeout(() => {
-        const imageUrl = `https://pollinations.ai/p/${encodeURIComponent(userText)}?width=800&height=500&seed=${Math.floor(Math.random() * 1000)}`;
-        const aiMsg = { sender: 'ai', text: `تم توليد الصورة بنجاح:`, image: imageUrl, feedback: null };
-        setChats(prev => prev.map(c => c.id === activeChatId ? { ...c, messages: [...c.messages, aiMsg] } : c));
-        setLoading(false);
-      }, 1500);
-      return;
-    }
+    if (isCodeRequested) setIsIdeOpen(true);
 
     try {
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          prompt: `System Mode: ${systemPersona}\nModel: ${selectedModel}\nUser Prompt: ${userText}` 
+          prompt: userText,
+          preferredModel: selectedModel,
+          systemPersona: systemPersona
         }),
       });
 
       let aiText = "";
+      let generatedImg = null;
+
       if (response.ok) {
         const data = await response.json();
         aiText = data.result;
+        if (data.image) generatedImg = data.image;
       } else {
         aiText = "أنا جاهز لمساعدتك! يمكنك طلب أي كود أو استفسار.";
       }
 
-      // 🔥 إذا كان رد الـ AI يحتوي على كود، افتح لوحة الـ IDE تلقائياً وقُم بتحديث الملفات والـ Artifacts
       if (aiText.includes('```')) {
-        setIsIdeOpen(true); // فتح لوحة الكود تلقائياً
+        setIsIdeOpen(true);
         const match = aiText.match(/```(\w+)?\n([\s\S]*?)```/);
         if (match) {
           const codeContent = match[2];
           const lang = match[1] ? match[1].toLowerCase() : 'html';
 
-          // تحديث الملف المناسب
           if (lang === 'html') setFiles(prev => ({ ...prev, 'index.html': codeContent }));
           else if (lang === 'css') setFiles(prev => ({ ...prev, 'styles.css': codeContent }));
           else if (lang === 'javascript' || lang === 'js') setFiles(prev => ({ ...prev, 'script.js': codeContent }));
@@ -204,7 +196,7 @@ export default function Workspace() {
         }
       }
 
-      const aiMsg = { sender: 'ai', text: aiText, feedback: null };
+      const aiMsg = { sender: 'ai', text: aiText, image: generatedImg, feedback: null };
       setChats(prev => prev.map(c => c.id === activeChatId ? { ...c, messages: [...c.messages, aiMsg] } : c));
 
     } catch (err) {
@@ -229,109 +221,112 @@ export default function Workspace() {
   const currentChat = chats.find(c => c.id === activeChatId) || { messages: [] };
 
   return (
-    <section className="py-6 px-4 max-w-[1700px] mx-auto flex gap-4 h-[830px]">
+    <section className="py-2 md:py-6 px-2 md:px-4 max-w-[1700px] mx-auto flex flex-col md:flex-row gap-4 h-[calc(100vh-80px)] md:h-[830px]">
       
-      {/* 1. Sidebar Component */}
-      <ChatSidebar 
-        chats={chats}
-        folders={folders}
-        activeChatId={activeChatId}
-        onSelectChat={setActiveChatId}
-        onNewChat={handleNewChat}
-        onCreateFolder={handleCreateFolder}
-        onPinChat={handlePinChat}
-        onDeleteChat={handleDeleteChat}
-        selectedModel={selectedModel}
-        onSelectModel={setSelectedModel}
-      />
+      {/* 📱 Overlay Overlay for Mobile Sidebar */}
+      {isMobileSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/70 z-40 md:hidden backdrop-blur-sm"
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
 
-      {/* 2. Studio Area */}
-      <div className="flex-1 flex flex-col gap-3">
+      {/* 📁 Sidebar Drawer Component */}
+      <div className={`
+        fixed md:relative z-50 md:z-auto top-0 right-0 h-full w-[280px] md:w-auto
+        transform transition-transform duration-300 ease-in-out bg-slate-950 md:bg-transparent
+        ${isMobileSidebarOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}
+      `}>
+        <ChatSidebar 
+          chats={chats}
+          folders={folders}
+          activeChatId={activeChatId}
+          onSelectChat={(id) => { setActiveChatId(id); setIsMobileSidebarOpen(false); }}
+          onNewChat={handleNewChat}
+          onCreateFolder={handleCreateFolder}
+          onPinChat={handlePinChat}
+          onDeleteChat={handleDeleteChat}
+          selectedModel={selectedModel}
+          onSelectModel={setSelectedModel}
+        />
+      </div>
+
+      {/* 💻 Studio Area */}
+      <div className="flex-1 flex flex-col gap-3 h-full overflow-hidden">
         
-        {/* Top Header */}
-        <div className="glass-card p-3 rounded-2xl border border-white/10 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        {/* Top Navigation Bar */}
+        <div className="glass-card p-2 md:p-3 rounded-2xl border border-white/10 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            
+            {/* ☰ Mobile Sidebar Toggle */}
+            <button 
+              onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+              className="p-1.5 md:hidden bg-slate-900 rounded-xl text-slate-300 border border-white/10"
+            >
+              {isMobileSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+
             <span className="text-xs font-bold text-white flex items-center gap-1.5">
               <Sparkles className="w-4 h-4 text-blue-400" />
-              AETHER Studio
+              <span className="hidden sm:inline">AETHER Studio</span>
             </span>
 
-            {/* Persona Selector */}
-            <div className="flex items-center gap-1 bg-slate-900/80 p-1 rounded-xl border border-white/5 text-[11px]">
+            {/* Mode Persona */}
+            <div className="flex items-center gap-1 bg-slate-900/80 p-0.5 md:p-1 rounded-xl border border-white/5 text-[10px] md:text-[11px]">
               <button 
                 onClick={() => setSystemPersona('developer')} 
                 className={`px-2 py-0.5 rounded-lg transition-all ${systemPersona === 'developer' ? 'bg-blue-600 text-white' : 'text-slate-400'}`}
               >
-                Developer
+                Dev
               </button>
               <button 
                 onClick={() => setSystemPersona('architect')} 
                 className={`px-2 py-0.5 rounded-lg transition-all ${systemPersona === 'architect' ? 'bg-purple-600 text-white' : 'text-slate-400'}`}
               >
-                Architect
+                Arch
               </button>
             </div>
           </div>
 
-          {/* زر التحكم في فتح/إغلاق الـ IDE يدويًا */}
+          {/* IDE Toggle */}
           <button 
             onClick={() => setIsIdeOpen(!isIdeOpen)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 md:px-3 md:py-1.5 rounded-xl text-xs font-medium border transition-all ${
               isIdeOpen 
                 ? 'bg-blue-600/20 text-blue-400 border-blue-500/30' 
                 : 'bg-slate-900 text-slate-400 border-white/10 hover:text-white'
             }`}
           >
             {isIdeOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
-            <span>{isIdeOpen ? 'Hide IDE Workspace' : 'Show IDE Workspace'}</span>
+            <span className="hidden sm:inline">{isIdeOpen ? 'Hide IDE' : 'Show IDE'}</span>
           </button>
         </div>
 
-        {/* Dynamic Layout: Chat + IDE (When Active) */}
-        <div className="grid grid-cols-12 gap-4 flex-1 overflow-hidden">
+        {/* Dynamic Layout */}
+        <div className="flex flex-col md:grid md:grid-cols-12 gap-4 flex-1 overflow-hidden">
           
-          {/* 💻 IDE Workspace (لا يظهر إلا عند كتابة كود أو فتح اللوحة) */}
+          {/* IDE Workspace (In Desktop/Mobile when active) */}
           {isIdeOpen && (
-            <div className="col-span-7 glass-card rounded-2xl border border-white/10 overflow-hidden flex flex-col transition-all duration-300">
-              
-              {/* Studio Tabs */}
+            <div className="h-[40vh] md:h-auto md:col-span-7 glass-card rounded-2xl border border-white/10 overflow-hidden flex flex-col">
               <div className="flex items-center justify-between px-3 py-2 bg-slate-900/80 border-b border-white/10">
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setActiveTab('editor')} className={`px-3 py-1 rounded-lg text-xs font-semibold ${activeTab === 'editor' ? 'bg-blue-600 text-white' : 'text-slate-400'}`}>Editor</button>
-                  <button onClick={() => setActiveTab('preview')} className={`px-3 py-1 rounded-lg text-xs font-semibold ${activeTab === 'preview' ? 'bg-emerald-600 text-white' : 'text-slate-400'}`}>Preview</button>
-                  <button onClick={() => setActiveTab('artifacts')} className={`px-3 py-1 rounded-lg text-xs font-semibold ${activeTab === 'artifacts' ? 'bg-purple-600 text-white' : 'text-slate-400'}`}>Artifacts</button>
-                </div>
-
-                <div className="flex items-center gap-2 text-xs">
-                  {Object.keys(files).map(f => (
-                    <button 
-                      key={f} 
-                      onClick={() => setActiveFile(f)}
-                      className={`px-2 py-0.5 rounded-md ${activeFile === f ? 'bg-white/10 text-blue-400 font-bold' : 'text-slate-500'}`}
-                    >
-                      {f}
-                    </button>
-                  ))}
+                  <button onClick={() => setActiveTab('editor')} className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${activeTab === 'editor' ? 'bg-blue-600 text-white' : 'text-slate-400'}`}>Editor</button>
+                  <button onClick={() => setActiveTab('preview')} className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${activeTab === 'preview' ? 'bg-emerald-600 text-white' : 'text-slate-400'}`}>Preview</button>
+                  <button onClick={() => setActiveTab('artifacts')} className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${activeTab === 'artifacts' ? 'bg-purple-600 text-white' : 'text-slate-400'}`}>Artifacts</button>
                 </div>
               </div>
 
-              {/* View Content */}
               <div className="flex-1 bg-slate-950 overflow-hidden">
                 {activeTab === 'editor' && (
                   <Editor height="100%" theme="vs-dark" language="html" value={files[activeFile]} onChange={(val) => setFiles({ ...files, [activeFile]: val || '' })} />
                 )}
-
                 {activeTab === 'preview' && (
                   <iframe title="Live Preview" srcDoc={srcDoc} className="w-full h-full bg-white border-none" />
                 )}
-
                 {activeTab === 'artifacts' && (
                   <div className="p-4 space-y-3 h-full bg-slate-950 overflow-y-auto">
-                    <span className="text-xs font-bold text-purple-400 flex items-center gap-1.5">
-                      <Box className="w-4 h-4" /> Active Code Artifact
-                    </span>
                     <pre className="p-3 bg-slate-900 rounded-xl text-xs font-mono text-emerald-400 overflow-x-auto">
-                      {activeArtifact?.content || 'No artifacts generated yet.'}
+                      {activeArtifact?.content || 'لا توجد عناصر مخرجة بعد.'}
                     </pre>
                   </div>
                 )}
@@ -339,20 +334,20 @@ export default function Workspace() {
             </div>
           )}
 
-          {/* 💬 AI Assistant Chat (يتمدد بعرض كامل إذا كان الـ IDE مغلقاً) */}
-          <div className={`${isIdeOpen ? 'col-span-5' : 'col-span-12'} glass-card rounded-2xl border border-white/10 flex flex-col justify-between overflow-hidden transition-all duration-300`}>
+          {/* AI Chat Window */}
+          <div className={`${isIdeOpen ? 'md:col-span-5' : 'md:col-span-12'} flex-1 glass-card rounded-2xl border border-white/10 flex flex-col justify-between overflow-hidden`}>
             
-            {/* Chat Messages */}
-            <div className="p-4 overflow-y-auto space-y-4 text-xs flex-1 no-scrollbar">
+            {/* Messages List */}
+            <div className="p-3 md:p-4 overflow-y-auto space-y-3 text-xs flex-1 no-scrollbar">
               {currentChat.messages.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-slate-500 space-y-2">
+                <div className="h-full flex flex-col items-center justify-center text-slate-500 space-y-2 text-center p-4">
                   <Sparkles className="w-8 h-8 text-blue-500/40 animate-pulse" />
-                  <p className="text-sm font-medium">مرحباً بك! اكتب سؤالك أو اطلب إنشاء كود لفتح الـ IDE.</p>
+                  <p className="text-xs md:text-sm font-medium">مرحباً بك! اسأل أو اطلب كود لفتح الـ IDE تلقائياً.</p>
                 </div>
               ) : (
                 currentChat.messages.map((msg, idx) => (
                   <div key={idx} className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}>
-                    <div className={`p-3.5 rounded-2xl max-w-[85%] ${msg.sender === 'user' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-200 border border-white/5'}`}>
+                    <div className={`p-3 rounded-2xl max-w-[90%] md:max-w-[85%] ${msg.sender === 'user' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-200 border border-white/5'}`}>
                       {msg.text}
                       {msg.image && (
                         <img src={msg.image} alt="Generated" className="mt-2 rounded-xl w-full border border-white/10 shadow-lg" />
@@ -378,14 +373,13 @@ export default function Workspace() {
               {loading && <Loader2 className="w-4 h-4 animate-spin text-blue-400" />}
             </div>
 
-            {/* Chat Input */}
-            <div className="p-3 border-t border-white/10 bg-slate-950/60">
+            {/* Input Form */}
+            <div className="p-2 md:p-3 border-t border-white/10 bg-slate-950/60">
               <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="flex items-center gap-2">
                 <button 
                   type="button" 
                   onClick={handleVoiceInput}
-                  className={`p-2.5 rounded-xl border border-white/10 ${isListening ? 'bg-rose-600 text-white animate-pulse' : 'bg-slate-900 text-slate-400 hover:text-white'}`}
-                  title="إدخال صوتي"
+                  className={`p-2 md:p-2.5 rounded-xl border border-white/10 ${isListening ? 'bg-rose-600 text-white animate-pulse' : 'bg-slate-900 text-slate-400 hover:text-white'}`}
                 >
                   <Mic className="w-4 h-4" />
                 </button>
@@ -394,11 +388,11 @@ export default function Workspace() {
                   type="text"
                   value={inputPrompt}
                   onChange={(e) => setInputPrompt(e.target.value)}
-                  placeholder="اسأل الذكاء الاصطناعي أو اطلب كود/تصميم لفتح اللوحة..."
-                  className="flex-1 px-4 py-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-blue-500"
+                  placeholder="اسأل الذكاء الاصطناعي..."
+                  className="flex-1 px-3 md:px-4 py-2 md:py-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-blue-500"
                 />
 
-                <button type="submit" disabled={loading} className="p-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl">
+                <button type="submit" disabled={loading} className="p-2 md:p-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl">
                   <Send className="w-4 h-4" />
                 </button>
               </form>
