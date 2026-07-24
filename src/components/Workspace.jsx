@@ -93,7 +93,7 @@ export default function App() {
     setLoading(true);
 
     try {
-      // تجربة الاتصال بالسيرفر (سواء المحلي أو Vercel endpoint مستقبلاً)
+      // الاتصال بالـ Serverless Endpoint المرفوع
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -108,14 +108,9 @@ export default function App() {
         const data = await response.json();
         aiResponse = data.result;
       } else {
-        // Fallback للـ Ollama المحلي في حالة التطوير المحلي
-        const localResponse = await fetch('http://localhost:8000/api/generate-code', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: userQuery }),
-        });
-        const localData = await localResponse.json();
-        aiResponse = localData.result;
+        // قراءة رسالة الخطأ القادمة من Vercel أو السيرفر بالتفصيل
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Server Status ${response.status}: Failed to reach API`);
       }
 
       setChatHistory((prev) => [...prev, { sender: 'ai', text: aiResponse }]);
@@ -133,9 +128,10 @@ export default function App() {
         setActiveFile(targetFileName);
       }
     } catch (err) {
+      // طباعة الخطأ الصريح في الشات
       setChatHistory((prev) => [
         ...prev, 
-        { sender: 'ai', text: '⚠️ Sandbox Mode: Make sure Local FastAPI server or Vercel API key is connected.' }
+        { sender: 'ai', text: `⚠️ API Connection Notice: ${err.message}` }
       ]);
     } finally {
       setLoading(false);
@@ -149,7 +145,7 @@ export default function App() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <button 
           onClick={() => handleQuickAction("Create a new fullstack project architecture with React and Tailwind.")}
-          className="p-4 rounded-2xl glass-card border border-white/10 hover:border-blue-500/50 hover:bg-white/5 transition-all text-left group"
+          className="p-4 rounded-2xl glass-card border border-white/10 hover:border-blue-500/50 hover:bg-white/5 transition-all text-left group cursor-pointer"
         >
           <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mb-3 group-hover:scale-110 transition-transform">
             <Wand2 className="w-5 h-5" />
@@ -160,7 +156,7 @@ export default function App() {
 
         <button 
           onClick={() => handleQuickAction("Write a clean production-ready React component with modern hooks.")}
-          className="p-4 rounded-2xl glass-card border border-white/10 hover:border-purple-500/50 hover:bg-white/5 transition-all text-left group"
+          className="p-4 rounded-2xl glass-card border border-white/10 hover:border-purple-500/50 hover:bg-white/5 transition-all text-left group cursor-pointer"
         >
           <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-3 group-hover:scale-110 transition-transform">
             <Cpu className="w-5 h-5" />
@@ -171,7 +167,7 @@ export default function App() {
 
         <button 
           onClick={() => handleQuickAction("Analyze current code for security bugs and performance improvements.")}
-          className="p-4 rounded-2xl glass-card border border-white/10 hover:border-emerald-500/50 hover:bg-white/5 transition-all text-left group"
+          className="p-4 rounded-2xl glass-card border border-white/10 hover:border-emerald-500/50 hover:bg-white/5 transition-all text-left group cursor-pointer"
         >
           <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-3 group-hover:scale-110 transition-transform">
             <FileSearch className="w-5 h-5" />
@@ -182,7 +178,7 @@ export default function App() {
 
         <button 
           onClick={() => handleQuickAction("Build a modern cyberpunk landing page UI component.")}
-          className="p-4 rounded-2xl glass-card border border-white/10 hover:border-amber-500/50 hover:bg-white/5 transition-all text-left group"
+          className="p-4 rounded-2xl glass-card border border-white/10 hover:border-amber-500/50 hover:bg-white/5 transition-all text-left group cursor-pointer"
         >
           <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mb-3 group-hover:scale-110 transition-transform">
             <Layout className="w-5 h-5" />
@@ -232,7 +228,7 @@ export default function App() {
               </span>
               <button 
                 onClick={handleCreateNewFile}
-                className="p-1 rounded bg-white/10 hover:bg-blue-600 text-white transition-all"
+                className="p-1 rounded bg-white/10 hover:bg-blue-600 text-white transition-all cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
               </button>
@@ -243,7 +239,7 @@ export default function App() {
                 <button
                   key={fileName}
                   onClick={() => setActiveFile(fileName)}
-                  className={`w-full flex items-center gap-2 p-2 rounded-xl transition-all text-left ${
+                  className={`w-full flex items-center gap-2 p-2 rounded-xl transition-all text-left cursor-pointer ${
                     activeFile === fileName 
                       ? 'bg-blue-600/20 text-blue-400 font-semibold border border-blue-500/30' 
                       : 'hover:bg-white/5 text-slate-400'
@@ -268,21 +264,21 @@ export default function App() {
             <div className="flex items-center gap-2">
               <button 
                 onClick={() => setActiveTab('editor')}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all ${activeTab === 'editor' ? 'bg-blue-600/30 text-blue-400 border border-blue-500/30' : 'text-slate-400 hover:text-white'}`}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${activeTab === 'editor' ? 'bg-blue-600/30 text-blue-400 border border-blue-500/30' : 'text-slate-400 hover:text-white'}`}
               >
                 <Code2 className="w-3.5 h-3.5" />
                 Editor
               </button>
               <button 
                 onClick={() => setActiveTab('terminal')}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all ${activeTab === 'terminal' ? 'bg-purple-600/30 text-purple-400 border border-purple-500/30' : 'text-slate-400 hover:text-white'}`}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${activeTab === 'terminal' ? 'bg-purple-600/30 text-purple-400 border border-purple-500/30' : 'text-slate-400 hover:text-white'}`}
               >
                 <TerminalIcon className="w-3.5 h-3.5" />
                 Terminal
               </button>
             </div>
 
-            <button onClick={handleCopy} className="text-slate-400 hover:text-white text-xs p-1">
+            <button onClick={handleCopy} className="text-slate-400 hover:text-white text-xs p-1 cursor-pointer">
               {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
             </button>
           </div>
@@ -374,7 +370,7 @@ export default function App() {
               <button 
                 type="submit"
                 disabled={loading || !inputPrompt.trim()}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:opacity-90 disabled:opacity-50 transition-opacity cursor-pointer"
               >
                 <Send className="w-3.5 h-3.5" />
               </button>
