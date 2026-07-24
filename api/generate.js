@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-  // 1. السماح بطلبات POST فقط
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -8,7 +7,7 @@ export default async function handler(req, res) {
     const { prompt, preferredModel, systemPersona } = req.body || {};
     const lowerPrompt = (prompt || '').toLowerCase();
 
-    // 2. التحقق من وجود المفتاح
+    // 1. التحقق من وجود المفتاح
     const GROQ_API_KEY = process.env.GROQ_API_KEY;
     if (!GROQ_API_KEY) {
       return res.status(200).json({ 
@@ -16,7 +15,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // 🎯 3. Auto Router - تحديد الموديل تلقائياً
+    // 🎯 2. Auto Router - تحديد الموديل تلقائياً
     let selectedModel = preferredModel;
     if (!preferredModel || preferredModel === 'auto-router') {
       if (/صورة|ارسم|صمم|generate image|draw|picture|flux/i.test(lowerPrompt)) {
@@ -30,7 +29,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // 🎨 4. توليد الصور بـ FLUX.1-dev
+    // 🎨 3. توليد الصور بـ FLUX.1-dev
     if (selectedModel === 'flux-1-dev') {
       const imageUrl = `https://pollinations.ai/p/${encodeURIComponent(prompt)}?width=1024&height=1024&seed=${Math.floor(Math.random() * 10000)}&model=flux`;
       return res.status(200).json({
@@ -40,18 +39,18 @@ export default async function handler(req, res) {
       });
     }
 
-    // 🌐 5. خريطة الموديلات المستقرة على Groq
+    // 🌐 4. خريطة الموديلات الرسمية النشطة والمحدثة على Groq
     let apiModelName = 'llama-3.3-70b-versatile';
 
     if (selectedModel === 'deepseek-chat') {
       apiModelName = 'deepseek-r1-distill-llama-70b';
     } else if (selectedModel === 'qwen-3-instruct') {
-      apiModelName = 'qwen-2.5-32b';
+      apiModelName = 'qwen-2.5-coder-32b'; // الاسم الرسمي الشغال لـ Qwen
     } else if (selectedModel === 'llama-3.1-70b-instruct') {
-      apiModelName = 'llama-3.3-70b-versatile';
+      apiModelName = 'llama-3.3-70b-versatile'; // أحدث وأسرع موديل لـ Llama
     }
 
-    // 🚀 6. طلب Groq API
+    // 🚀 5. طلب Groq API
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
