@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import Editor from '@monaco-editor/react';
 import { 
   Code2, Terminal as TerminalIcon, Send, FileCode, Folder, 
-  Play, Sparkles, Copy, Check, UploadCloud, Loader2, Plus, FilePlus
+  Play, Sparkles, Copy, Check, UploadCloud, Loader2, Plus,
+  Wand2, Cpu, FileSearch, Layout
 } from 'lucide-react';
 
 export default function Workspace() {
@@ -10,19 +12,26 @@ export default function Workspace() {
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // قائمة الملفات - تبدأ بملف واحد أساسي، وأي ملف جديد يتم إنشاؤه تلقائياً بواسطة AI أو المستخدم
+  // قائمة الملفات الديناميكية
   const [files, setFiles] = useState({
-    'main.jsx': `// Welcome to AETHER.OS Realtime AI Engine
-// Ask AI to generate components, pages, or entire projects!
-console.log("AETHER.OS Active Environment");`
+    'App.jsx': `// Welcome to AETHER.OS Realtime AI Engine
+import React from 'react';
+
+export default function App() {
+  return (
+    <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+      <h1 className="text-3xl font-bold text-blue-400">AETHER.OS Active Environment</h1>
+    </div>
+  );
+}`
   });
 
-  const [activeFile, setActiveFile] = useState('main.jsx');
+  const [activeFile, setActiveFile] = useState('App.jsx');
 
   // مخرجات الترمينال
   const [terminalLogs, setTerminalLogs] = useState([
     '$ aether-os --init local-cluster',
-    '[SUCCESS] AI Dynamic Engine Active',
+    '[SUCCESS] Monaco Editor & AI Engine Integrated',
     '$ ready for project instructions_'
   ]);
 
@@ -30,9 +39,20 @@ console.log("AETHER.OS Active Environment");`
   const [chatHistory, setChatHistory] = useState([
     { 
       sender: 'ai', 
-      text: 'مرحباً بك! أنا مهندس البرمجيات الخاص بك. أطلب مني بناء أي مكون أو صفحة، وسأقوم بإنشاء الملفات والتكويذ تلقائياً!' 
+      text: 'مرحباً بك! أنا مهندس البرمجيات الخاص بك في AETHER.OS. اختر كارت من الأوامر السريعة أو أطلب مني بناء أي مكون!' 
     }
   ]);
+
+  // تحديد لغة الملف تلقائياً لـ Monaco Editor
+  const getLanguage = (filename) => {
+    if (filename.endsWith('.js') || filename.endsWith('.jsx')) return 'javascript';
+    if (filename.endsWith('.ts') || filename.endsWith('.tsx')) return 'typescript';
+    if (filename.endsWith('.css')) return 'css';
+    if (filename.endsWith('.html')) return 'html';
+    if (filename.endsWith('.json')) return 'json';
+    if (filename.endsWith('.py')) return 'python';
+    return 'javascript';
+  };
 
   const handleCopy = () => {
     navigator.clipboard.writeText(files[activeFile] || '');
@@ -40,45 +60,29 @@ console.log("AETHER.OS Active Environment");`
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // إنشاء ملف جديد يدوياً
   const handleCreateNewFile = () => {
-    const fileName = prompt('Enter new file name (e.g. Button.jsx, styles.css):');
+    const fileName = prompt('Enter new file name (e.g. Navbar.jsx, styles.css):');
     if (fileName && !files[fileName]) {
       setFiles(prev => ({ ...prev, [fileName]: `// New file: ${fileName}\n` }));
       setActiveFile(fileName);
     }
   };
 
-  // تشغيل الكود في الترمينال
   const handleRunCode = () => {
     setActiveTab('terminal');
     setTerminalLogs(prev => [
       ...prev,
       `\n$ npm run build --file=${activeFile}`,
-      `[BUILD] Compiling ${activeFile}...`,
-      `[SUCCESS] Active file executed successfully ✨`
+      `[BUILD] Compiling ${activeFile} with Vite...`,
+      `[SUCCESS] Active file executed successfully in Monaco Sandbox ✨`
     ]);
   };
 
-  // رفع ملف خارجي لإضافته تلقائياً للقائمة
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const content = event.target.result;
-        setFiles(prev => ({ ...prev, [file.name]: content }));
-        setActiveFile(file.name);
-        setChatHistory(prev => [
-          ...prev, 
-          { sender: 'ai', text: `📁 تم رفع الملف "${file.name}" وتم إضافته لهيكل المشروع!` }
-        ]);
-      };
-      reader.readAsText(file);
-    }
+  // Quick Action Click Handler
+  const handleQuickAction = (promptText) => {
+    setInputPrompt(promptText);
   };
 
-  // إرسال الطلب للـ AI وتحليل النتيجة لإنشاء الملفات تلقائياً
   const handleSendMessage = async () => {
     if (!inputPrompt.trim() || loading) return;
 
@@ -89,7 +93,8 @@ console.log("AETHER.OS Active Environment");`
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8000/api/generate-code', {
+      // تجربة الاتصال بالسيرفر (سواء المحلي أو Vercel endpoint مستقبلاً)
+      const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -97,18 +102,26 @@ console.log("AETHER.OS Active Environment");`
         }),
       });
 
-      if (!response.ok) throw new Error('Server connection error');
+      let aiResponse = "";
 
-      const data = await response.json();
-      const aiResponse = data.result;
+      if (response.ok) {
+        const data = await response.json();
+        aiResponse = data.result;
+      } else {
+        // Fallback للـ Ollama المحلي في حالة التطوير المحلي
+        const localResponse = await fetch('http://localhost:8000/api/generate-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: userQuery }),
+        });
+        const localData = await localResponse.json();
+        aiResponse = localData.result;
+      }
 
       setChatHistory((prev) => [...prev, { sender: 'ai', text: aiResponse }]);
 
-      // 🧠 تحليل الذكاء الاصطناعي: إذا كان الرد يحتوي على كود
       if (aiResponse.includes('```')) {
         const extractedCode = aiResponse.split('```')[1].replace(/^[a-zA-Z]+\n/, '');
-
-        // البحث إذا كان الـ AI حدد اسم ملف جديد في أول السطر مثل: // filename: Header.jsx أو Component: Header.jsx
         const fileNameMatch = aiResponse.match(/(?:file|component|filename):\s*([a-zA-Z0-9_\-\.]+)/i);
         
         let targetFileName = activeFile;
@@ -116,14 +129,13 @@ console.log("AETHER.OS Active Environment");`
           targetFileName = fileNameMatch[1].trim();
         }
 
-        // إنشاء الملف الجديد أو تحديث الملف الحالي
         setFiles(prev => ({ ...prev, [targetFileName]: extractedCode }));
         setActiveFile(targetFileName);
       }
     } catch (err) {
       setChatHistory((prev) => [
         ...prev, 
-        { sender: 'ai', text: '⚠️ Connection Notice: Local server offline. Running in sandbox mode.' }
+        { sender: 'ai', text: '⚠️ Sandbox Mode: Make sure Local FastAPI server or Vercel API key is connected.' }
       ]);
     } finally {
       setLoading(false);
@@ -131,22 +143,70 @@ console.log("AETHER.OS Active Environment");`
   };
 
   return (
-    <section id="workspace" className="py-12 px-4 max-w-7xl mx-auto">
-      {/* Title & Action Controls */}
-      <div className="flex items-center justify-between mb-6">
+    <section id="workspace" className="py-8 px-4 max-w-7xl mx-auto space-y-6">
+      
+      {/* 🚀 Quick Action Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <button 
+          onClick={() => handleQuickAction("Create a new fullstack project architecture with React and Tailwind.")}
+          className="p-4 rounded-2xl glass-card border border-white/10 hover:border-blue-500/50 hover:bg-white/5 transition-all text-left group"
+        >
+          <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mb-3 group-hover:scale-110 transition-transform">
+            <Wand2 className="w-5 h-5" />
+          </div>
+          <h3 className="text-sm font-bold text-white">Create Project</h3>
+          <p className="text-xs text-slate-400 mt-1">Initialize clean AI boilerplate</p>
+        </button>
+
+        <button 
+          onClick={() => handleQuickAction("Write a clean production-ready React component with modern hooks.")}
+          className="p-4 rounded-2xl glass-card border border-white/10 hover:border-purple-500/50 hover:bg-white/5 transition-all text-left group"
+        >
+          <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-3 group-hover:scale-110 transition-transform">
+            <Cpu className="w-5 h-5" />
+          </div>
+          <h3 className="text-sm font-bold text-white">Generate Code</h3>
+          <p className="text-xs text-slate-400 mt-1">Write optimized architecture</p>
+        </button>
+
+        <button 
+          onClick={() => handleQuickAction("Analyze current code for security bugs and performance improvements.")}
+          className="p-4 rounded-2xl glass-card border border-white/10 hover:border-emerald-500/50 hover:bg-white/5 transition-all text-left group"
+        >
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-3 group-hover:scale-110 transition-transform">
+            <FileSearch className="w-5 h-5" />
+          </div>
+          <h3 className="text-sm font-bold text-white">Analyze Files</h3>
+          <p className="text-xs text-slate-400 mt-1">Audit and refactor codebase</p>
+        </button>
+
+        <button 
+          onClick={() => handleQuickAction("Build a modern cyberpunk landing page UI component.")}
+          className="p-4 rounded-2xl glass-card border border-white/10 hover:border-amber-500/50 hover:bg-white/5 transition-all text-left group"
+        >
+          <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mb-3 group-hover:scale-110 transition-transform">
+            <Layout className="w-5 h-5" />
+          </div>
+          <h3 className="text-sm font-bold text-white">Build Website</h3>
+          <p className="text-xs text-slate-400 mt-1">Prompt to React / Next UI</p>
+        </button>
+      </div>
+
+      {/* Header Studio Title */}
+      <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-white flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-blue-400" />
             AI Developer Studio
           </h2>
-          <p className="text-xs text-slate-400">Dynamic Multi-File AI Workspace Environment</p>
+          <p className="text-xs text-slate-400">Monaco IDE Powered Realtime Code Environment</p>
         </div>
 
         <div className="flex items-center gap-3">
           <label className="flex items-center gap-2 px-3 py-1.5 rounded-lg glass-card text-xs font-medium hover:bg-white/10 text-slate-300 transition-all border border-white/10 cursor-pointer">
             <UploadCloud className="w-4 h-4 text-purple-400" />
             <span>Upload Context</span>
-            <input type="file" onChange={handleFileUpload} className="hidden" />
+            <input type="file" className="hidden" />
           </label>
 
           <button 
@@ -162,7 +222,7 @@ console.log("AETHER.OS Active Environment");`
       {/* Main Studio Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-[650px]">
         
-        {/* 1. Left Sidebar: Dynamic File Tree */}
+        {/* 1. Dynamic File Tree Sidebar */}
         <div className="lg:col-span-3 glass-card rounded-2xl p-4 border border-white/10 flex flex-col justify-between overflow-hidden">
           <div>
             <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center justify-between">
@@ -170,18 +230,14 @@ console.log("AETHER.OS Active Environment");`
                 <Folder className="w-4 h-4 text-amber-400" />
                 src/
               </span>
-              
-              {/* Add New File Button */}
               <button 
                 onClick={handleCreateNewFile}
-                title="Create New File"
                 className="p-1 rounded bg-white/10 hover:bg-blue-600 text-white transition-all"
               >
                 <Plus className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            {/* Render Dynamic Files List */}
             <div className="space-y-1 text-xs max-h-[480px] overflow-y-auto no-scrollbar">
               {Object.keys(files).map((fileName) => (
                 <button
@@ -200,14 +256,13 @@ console.log("AETHER.OS Active Environment");`
             </div>
           </div>
 
-          {/* Dynamic Active Badge */}
           <div className="p-3 rounded-xl bg-slate-900/80 border border-white/5 text-xs flex items-center justify-between mt-auto">
             <span className="text-slate-400">Editing:</span>
             <span className="text-blue-400 font-mono font-bold truncate max-w-[120px]">{activeFile}</span>
           </div>
         </div>
 
-        {/* 2. Middle Column: Code Editor & Terminal */}
+        {/* 2. Monaco Editor & Live Terminal */}
         <div className="lg:col-span-5 glass-card rounded-2xl border border-white/10 flex flex-col overflow-hidden">
           <div className="flex items-center justify-between px-4 py-2 bg-slate-900/60 border-b border-white/10">
             <div className="flex items-center gap-2">
@@ -233,13 +288,23 @@ console.log("AETHER.OS Active Environment");`
           </div>
 
           {activeTab === 'editor' ? (
-            <textarea
-              value={files[activeFile] || ''}
-              onChange={(e) => setFiles({ ...files, [activeFile]: e.target.value })}
-              className="w-full h-full bg-slate-950/80 text-emerald-400 font-mono text-xs p-4 focus:outline-none resize-none no-scrollbar"
-              spellCheck="false"
-              placeholder="// Select or generate a file to edit code..."
-            />
+            <div className="w-full h-full pt-2 bg-[#1e1e1e]">
+              <Editor
+                height="100%"
+                theme="vs-dark"
+                language={getLanguage(activeFile)}
+                value={files[activeFile] || ''}
+                onChange={(value) => setFiles({ ...files, [activeFile]: value || '' })}
+                options={{
+                  fontSize: 12,
+                  minimap: { enabled: false },
+                  scrollBeyondLastLine: false,
+                  automaticLayout: true,
+                  tabSize: 2,
+                  fontFamily: 'Fira Code, monospace',
+                }}
+              />
+            </div>
           ) : (
             <div className="w-full h-full bg-black/90 p-4 font-mono text-xs text-slate-300 space-y-2 no-scrollbar overflow-y-auto">
               {terminalLogs.map((log, idx) => (
@@ -251,7 +316,7 @@ console.log("AETHER.OS Active Environment");`
           )}
         </div>
 
-        {/* 3. Right Column: Dynamic AI Chat */}
+        {/* 3. Right Column: AI Chat */}
         <div className="lg:col-span-4 glass-card rounded-2xl border border-white/10 flex flex-col overflow-hidden">
           <div className="px-4 py-3 bg-slate-900/60 border-b border-white/10 flex items-center justify-between">
             <span className="text-xs font-bold text-white flex items-center gap-2">
@@ -261,7 +326,6 @@ console.log("AETHER.OS Active Environment");`
             <span className="text-[10px] text-slate-400">Target: {activeFile}</span>
           </div>
 
-          {/* Chat Messages */}
           <div className="flex-1 p-4 overflow-y-auto space-y-4 text-xs no-scrollbar">
             {chatHistory.map((msg, index) => (
               <div 
@@ -289,12 +353,11 @@ console.log("AETHER.OS Active Environment");`
             {loading && (
               <div className="flex gap-2 items-center text-blue-400 text-xs p-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Generating and compiling dynamic code...</span>
+                <span>AETHER AI is coding in Monaco...</span>
               </div>
             )}
           </div>
 
-          {/* Chat Input */}
           <div className="p-3 border-t border-white/10 bg-slate-950/50">
             <form 
               onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}
@@ -304,7 +367,7 @@ console.log("AETHER.OS Active Environment");`
                 type="text"
                 value={inputPrompt}
                 onChange={(e) => setInputPrompt(e.target.value)}
-                placeholder="Ex: Create Navbar.jsx component..."
+                placeholder="Ask AI to code or click a Quick Action above..."
                 className="w-full pl-3 pr-10 py-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-all"
                 disabled={loading}
               />

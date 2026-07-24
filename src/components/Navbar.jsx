@@ -1,51 +1,68 @@
-import { Terminal, Cpu, Layout, Key, CreditCard, User } from 'lucide-react';
+import { Sparkles, Cpu, Key, Zap, Github } from 'lucide-react';
 
-export default function Navbar() {
-  const navItems = [
-    { name: 'Workspace', icon: Layout },
-    { name: 'Models', icon: Cpu },
-    { name: 'API', icon: Key },
-    { name: 'Pricing', icon: CreditCard },
-  ];
-
+export default function Navbar({ onOpenModal }) {
   return (
-    <header className="fixed top-5 left-1/2 -translate-x-1/2 z-40 w-[90%] max-w-6xl">
-      <nav className="glass-card rounded-2xl px-6 py-3 flex items-center justify-between border border-white/10 shadow-2xl">
-        {/* Logo */}
+    <nav className="sticky top-0 z-40 w-full border-b border-white/10 bg-slate-950/70 backdrop-blur-xl">
+      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+        
+        {/* Brand Logo */}
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-gradient-to-tr from-blue-600 to-purple-600 shadow-lg shadow-blue-500/30">
-            <Terminal className="w-5 h-5 text-white" />
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+            <Sparkles className="w-5 h-5 text-white animate-pulse" />
           </div>
-          <span className="font-bold text-lg tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-slate-400">
-            AETHER<span className="text-blue-500">.OS</span>
-          </span>
+          <div>
+            <span className="font-extrabold text-lg tracking-wider text-white">AETHER<span className="text-blue-400">.OS</span></span>
+            <span className="block text-[9px] text-slate-400 tracking-widest uppercase font-mono">Realtime AI Studio</span>
+          </div>
         </div>
 
-        {/* Links */}
-        <div className="hidden md:flex items-center gap-8">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <a
-                key={item.name}
-                href={`#${item.name.toLowerCase()}`}
-                className="text-sm font-medium text-slate-400 hover:text-white transition-colors flex items-center gap-2"
-              >
-                <Icon className="w-4 h-4 text-blue-400/80" />
-                {item.name}
-              </a>
-            );
-          })}
-        </div>
+        {/* Navigation Links */}
+        <div className="hidden md:flex items-center gap-6 text-xs font-medium text-slate-300">
+          <button 
+            onClick={() => onOpenModal('models')} 
+            className="flex items-center gap-1.5 hover:text-blue-400 transition-colors cursor-pointer"
+          >
+            <Cpu className="w-4 h-4 text-blue-400" />
+            Models
+          </button>
 
-        {/* Profile Button */}
-        <div className="flex items-center gap-4">
-          <button className="flex items-center gap-2 px-4 py-2 rounded-xl glass-card hover:bg-white/10 text-xs font-semibold tracking-wide border border-white/10 transition-all cursor-pointer">
-            <User className="w-4 h-4 text-purple-400" />
-            <span>Profile</span>
+          <button 
+            onClick={() => onOpenModal('apikeys')} 
+            className="flex items-center gap-1.5 hover:text-purple-400 transition-colors cursor-pointer"
+          >
+            <Key className="w-4 h-4 text-purple-400" />
+            API Keys
+          </button>
+
+          <button 
+            onClick={() => onOpenModal('pricing')} 
+            className="flex items-center gap-1.5 hover:text-amber-400 transition-colors cursor-pointer"
+          >
+            <Zap className="w-4 h-4 text-amber-400" />
+            Pricing
           </button>
         </div>
-      </nav>
-    </header>
+
+        {/* Right CTA */}
+        <div className="flex items-center gap-3">
+          <a 
+            href="https://github.com" 
+            target="_blank" 
+            rel="noreferrer"
+            className="p-2 rounded-xl glass-card hover:bg-white/10 text-slate-300 transition-all border border-white/10"
+          >
+            <Github className="w-4 h-4" />
+          </a>
+
+          <a 
+            href="#workspace"
+            className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90 text-white text-xs font-semibold shadow-lg shadow-blue-600/20 transition-all"
+          >
+            Launch Studio
+          </a>
+        </div>
+
+      </div>
+    </nav>
   );
 }
