@@ -7,29 +7,28 @@ export default async function handler(req, res) {
     const { prompt, preferredModel, systemPersona } = req.body || {};
     const lowerPrompt = (prompt || '').toLowerCase();
 
-    // 1. التحقق من وجود المفتاح
+    // 1. التحقق من مفتاح الـ API
     const GROQ_API_KEY = process.env.GROQ_API_KEY;
     if (!GROQ_API_KEY) {
       return res.status(200).json({ 
-        result: "⚠️ تحذير: لم يتم العثور على GROQ_API_KEY في إعدادات Vercel. يرجى إضافته في Environment Variables." 
+        result: "⚠️ تحذير: لم يتم العثور على GROQ_API_KEY في إعدادات Vercel." 
       });
     }
 
-    // 🎯 2. Auto Router - تحديد الموديل تلقائياً
+    // 🎯 2. Auto Router (توجيه الذكاء الاصطناعي)
     let selectedModel = preferredModel;
+
     if (!preferredModel || preferredModel === 'auto-router') {
       if (/صورة|ارسم|صمم|generate image|draw|picture|flux/i.test(lowerPrompt)) {
         selectedModel = 'flux-1-dev';
       } else if (/فكر|منطق|حلل|حل مشكلة|bug|reasoning|algorithm|خوارزمية|شرح معقد/i.test(lowerPrompt)) {
         selectedModel = 'deepseek-chat';
-      } else if (/كود|برمج|react|python|html|css|javascript|database/i.test(lowerPrompt)) {
-        selectedModel = 'llama-3.1-70b-instruct';
       } else {
-        selectedModel = 'qwen-3-instruct';
+        selectedModel = 'llama-3.1-70b-instruct'; // الموديل الافتراضي المستقر للعام والكود
       }
     }
 
-    // 🎨 3. توليد الصور بـ FLUX.1-dev
+    // 🎨 3. توليد الصور عبر FLUX.1-dev
     if (selectedModel === 'flux-1-dev') {
       const imageUrl = `https://pollinations.ai/p/${encodeURIComponent(prompt)}?width=1024&height=1024&seed=${Math.floor(Math.random() * 10000)}&model=flux`;
       return res.status(200).json({
@@ -39,18 +38,16 @@ export default async function handler(req, res) {
       });
     }
 
-    // 🌐 4. خريطة الموديلات الرسمية النشطة والمحدثة على Groq
+    // 🌐 4. توجيه الموديلات لـ Groq API المضمونة
     let apiModelName = 'llama-3.3-70b-versatile';
 
     if (selectedModel === 'deepseek-chat') {
       apiModelName = 'deepseek-r1-distill-llama-70b';
-    } else if (selectedModel === 'qwen-3-instruct') {
-      apiModelName = 'qwen-2.5-coder-32b'; // الاسم الرسمي الشغال لـ Qwen
-    } else if (selectedModel === 'llama-3.1-70b-instruct') {
-      apiModelName = 'llama-3.3-70b-versatile'; // أحدث وأسرع موديل لـ Llama
+    } else {
+      apiModelName = 'llama-3.3-70b-versatile';
     }
 
-    // 🚀 5. طلب Groq API
+    // 🚀 5. إرسال الطلب لـ Groq
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {

@@ -43,7 +43,6 @@ export default function ChatSidebar({
           >
             <option value="auto-router" className="bg-slate-900 text-emerald-400">⚡ Auto Smart Router</option>
             <option value="deepseek-chat" className="bg-slate-900 text-purple-400">🧠 DeepSeek Chat</option>
-            <option value="qwen-3-instruct" className="bg-slate-900 text-blue-400">💬 Qwen 3 Instruct</option>
             <option value="llama-3.1-70b-instruct" className="bg-slate-900 text-amber-400">🛡️ Llama 3.1 Instruct</option>
             <option value="flux-1-dev" className="bg-slate-900 text-rose-400">🎨 FLUX.1-dev</option>
           </select>
