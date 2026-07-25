@@ -6,34 +6,23 @@ import PricingModal from './components/PricingModal';
 import PaymentModal from './components/PaymentModal';
 
 export default function App() {
-  // 🧠 الذاكرة القوية (Persistent User Memory): استرجاع بيانات المستخدم المحفوظة
+  // 🧠 الذاكرة القوية: حفظ واسترجاع بيانات المستخدم تلقائياً
   const [user, setUser] = useState(() => {
     try {
       const savedUser = localStorage.getItem('aether_user');
       return savedUser ? JSON.parse(savedUser) : null;
     } catch (e) {
-      console.error("Error loading user memory:", e);
       return null;
     }
   });
 
-  // 🧠 الذاكرة القوية للمشاريع والمحادثات
-  const [workspaceMemory, setWorkspaceMemory] = useState(() => {
-    try {
-      const savedMemory = localStorage.getItem('aether_workspace_memory');
-      return savedMemory ? JSON.parse(savedMemory) : { chats: [], activeFiles: [] };
-    } catch (e) {
-      return { chats: [], activeFiles: [] };
-    }
-  });
-
-  // حالات فتح/إغلاق النوافذ (Modals)
+  // التحكم في الشاشات المنبثقة Modals
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isPricingOpen, setIsPricingOpen] = useState(false);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
 
-  // 💾 حفظ المستخدم تلقائياً في الذاكرة عند أي تغيير
+  // 💾 التحديث التلقائي للذاكرة مع كل تغيير في بيانات المستخدم
   useEffect(() => {
     if (user) {
       localStorage.setItem('aether_user', JSON.stringify(user));
@@ -42,46 +31,38 @@ export default function App() {
     }
   }, [user]);
 
-  // 💾 حفظ ذاكرة مساحة العمل والبيانات عند التحديث
-  useEffect(() => {
-    if (workspaceMemory) {
-      localStorage.setItem('aether_workspace_memory', JSON.stringify(workspaceMemory));
-    }
-  }, [workspaceMemory]);
-
-  // دالة تسجيل الدخول والاحتفاظ بالحساب
+  // نجاح تسجيل الدخول
   const handleLoginSuccess = (userData) => {
     setUser(userData);
     setIsAuthOpen(false);
   };
 
-  // دالة تسجيل الخروج
+  // تسجيل الخروج
   const handleLogout = () => {
     setUser(null);
   };
 
-  // 💳 معالجة اختيار خطة الأسعار والتحويل لبوابة الدفع
+  // معالجة الضغط على زر الترقية
   const handleSelectPlan = (plan) => {
     const planName = typeof plan === 'object' ? plan.name : (plan || 'Pro Developer OS');
     const planPrice = typeof plan === 'object' ? plan.price : '$19';
 
-    // لو اختار الخطة المجانية
     if (planName.toLowerCase().includes('community') || planName.toLowerCase().includes('free')) {
       if (user) setUser(prev => ({ ...prev, plan: 'Free' }));
       setIsPricingOpen(false);
       return;
     }
 
-    // تجهيز الخطة المختارة وفتح بوابة الدفع فوراً
+    // فتح بوابات الدفع والمحافظ فوراً
     setSelectedPlan({ name: planName, price: planPrice });
     setIsPricingOpen(false);
-    setIsPaymentOpen(true); // 👈 فتح بوابة الدفع مباشرة
+    setIsPaymentOpen(true);
   };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-blue-600 selection:text-white">
       
-      {/* 1️⃣ الشريط العلوي Navbar */}
+      {/* Navbar */}
       <Navbar 
         user={user} 
         onOpenAuth={() => setIsAuthOpen(true)} 
@@ -89,24 +70,19 @@ export default function App() {
         onLogout={handleLogout} 
       />
 
-      {/* 2️⃣ منطقة العمل الرئيسية Workspace المربوطة بالذاكرة */}
+      {/* Workspace الرئيسي */}
       <main className="flex-1 overflow-hidden">
-        <Workspace 
-          user={user} 
-          onOpenPricing={() => setIsPricingOpen(true)}
-          workspaceMemory={workspaceMemory}
-          setWorkspaceMemory={setWorkspaceMemory}
-        />
+        <Workspace user={user} onOpenPricing={() => setIsPricingOpen(true)} />
       </main>
 
-      {/* 3️⃣ نافذة تسجيل الدخول AuthModal */}
+      {/* Auth Modal */}
       <AuthModal 
         isOpen={isAuthOpen} 
         onClose={() => setIsAuthOpen(false)} 
         onLoginSuccess={handleLoginSuccess} 
       />
 
-      {/* 4️⃣ نافذة خطط الأسعار PricingModal */}
+      {/* Pricing Modal */}
       <PricingModal 
         isOpen={isPricingOpen} 
         onClose={() => setIsPricingOpen(false)} 
@@ -114,7 +90,7 @@ export default function App() {
         onSelectPlan={handleSelectPlan}
       />
 
-      {/* 5️⃣ نافذة وبوابة الدفع بالمحافظ والعملات PaymentModal */}
+      {/* Payment Modal */}
       <PaymentModal 
         isOpen={isPaymentOpen} 
         onClose={() => setIsPaymentOpen(false)} 
