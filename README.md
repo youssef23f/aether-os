@@ -57,7 +57,8 @@ graph TD
 AETHER-OS/
 ├── main.py                     # Primary Python Backend Router & Orchestrator
 └── aether-os/
-    ├── api/                    # Serverless Functions & API Endpoints
+    ├── api/
+         ├──generate.js         # Serverless Functions & API Endpoints
     ├── public/                 # Static Assets & Icons
     ├── config/                 # Platform Configurations
     │   ├── modelsData.js       # AI Models Mapping & Dynamic Routes
