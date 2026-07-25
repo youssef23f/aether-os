@@ -1,207 +1,121 @@
 import { useState } from 'react';
-import { 
-  X, CheckCircle2, Copy, Check, ArrowRight, Wallet, QrCode
-} from 'lucide-react';
-import { PAYMENT_CONFIG } from '../config/paymentConfig';
+import { X, CheckCircle, ShieldCheck, Wallet, CreditCard, ArrowRight, Copy, Check } from 'lucide-react';
 
 export default function PaymentModal({ isOpen, onClose, selectedPlan }) {
-  const [method, setMethod] = useState('telda'); // telda | fawry | paypal | binance | okx
-  const [copiedText, setCopiedText] = useState('');
-  const [receipt, setReceipt] = useState(null);
-  const [txId, setTxId] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [method, setMethod] = useState('telda');
+  const [copied, setCopied] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleCopy = (text) => {
-    navigator.clipboard.writeText(text);
-    setCopiedText(text);
-    setTimeout(() => setCopiedText(''), 2000);
+  const planName = selectedPlan?.name || 'Pro Developer OS';
+  const planPrice = selectedPlan?.price || '$19';
+
+  const paymentDetails = {
+    telda: { name: 'Telda / Vodafone Cash', account: '01281256422', note: 'حول المبلغ المباشر وأرسل الإشعار' },
+    fawry: { name: 'فوري (Fawry)', account: 'Code: 01281256422', note: 'ادفع عبر أي منفذ فوري برقم الكود' },
+    binance: { name: 'Binance Pay / USDT (TRC20)', account: 'جاري اضافه الميزه', note: 'USDT TRC20 Address' },
+    paypal: { name: 'PayPal', account: 'smarttraderx61@gmail.com', note: 'Send as Friends & Family or Goods' },
+    okx: { name: 'OKX Pay', account: 'OKX-UID: *****', note: 'Direct OKX Transfer' }
   };
 
-  const handleSubmitProof = (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+  const handleCopy = (text) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
-    // إرسال إثبات الدفع للسيرفر أو إشعار الأدمن
+  const handleConfirmPayment = () => {
+    setIsSuccess(true);
     setTimeout(() => {
-      setIsSubmitting(false);
-      setIsSuccess(true);
-    }, 1500);
+      setIsSuccess(false);
+      onClose();
+    }, 2500);
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-white/10 rounded-2xl max-w-xl w-full p-5 md:p-6 shadow-2xl relative overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+      <div className="relative w-full max-w-lg bg-slate-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden p-6 text-slate-100">
         
-        {/* زر الإغلاق */}
         <button 
-          onClick={onClose} 
-          className="absolute top-4 left-4 p-2 text-slate-400 hover:text-white bg-slate-800/50 rounded-xl"
+          onClick={onClose}
+          className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-white bg-slate-800/50 hover:bg-slate-800 rounded-lg transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
 
-        {!isSuccess ? (
+        {isSuccess ? (
+          <div className="text-center py-8 space-y-4">
+            <div className="inline-flex p-4 bg-emerald-500/10 text-emerald-400 rounded-full border border-emerald-500/20">
+              <CheckCircle className="w-12 h-12" />
+            </div>
+            <h3 className="text-xl font-bold text-white">تم استلام طلب الترقية بنجاح!</h3>
+            <p className="text-xs text-slate-400">جاري تفعيل خطة <span className="text-emerald-400 font-bold">{planName}</span> لحسابك...</p>
+          </div>
+        ) : (
           <>
-            {/* الهيدر */}
             <div className="mb-6">
-              <span className="text-xs font-semibold px-2.5 py-1 bg-blue-500/20 text-blue-400 rounded-full border border-blue-500/30">
-                إتمام الاشتراك
+              <span className="text-[10px] font-mono text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2.5 py-1 rounded-full">
+                تأكيد الدفع والترقية
               </span>
-              <h2 className="text-xl font-bold text-white mt-2">
-                ترقية إلى خطة {selectedPlan?.name || 'Pro'}
-              </h2>
-              <p className="text-xs text-slate-400">
-                المبلغ المطلوب: <span className="text-emerald-400 font-bold text-sm">{selectedPlan?.price || '$29'}</span>
+              <h2 className="text-xl font-bold text-white mt-2">اختر طريقة الدفع المناسبة</h2>
+              <p className="text-xs text-slate-400 mt-1">
+                الخطة المختارة: <span className="text-white font-semibold">{planName}</span> ({planPrice})
               </p>
             </div>
 
-            {/* 1️⃣ أزرار اختيار المحفظة */}
-            <div className="grid grid-cols-3 md:grid-cols-5 gap-2 mb-6">
+            {/* طرق الدفع */}
+            <div className="grid grid-cols-3 gap-2 mb-6">
               {[
-                { id: 'telda', label: 'Telda / Cash', icon: '📱' },
-                { id: 'fawry', label: 'Fawry', icon: '🟡' },
-                { id: 'paypal', label: 'PayPal', icon: '💳' },
-                { id: 'binance', label: 'Binance', icon: '🟡' },
-                { id: 'okx', label: 'OKX', icon: '⬛' },
-              ].map((item) => (
+                { id: 'telda', label: 'تيلدا / كاش' },
+                { id: 'fawry', label: 'فوري' },
+                { id: 'binance', label: 'Binance USDT' },
+                { id: 'paypal', label: 'PayPal' },
+                { id: 'okx', label: 'OKX Pay' },
+              ].map((m) => (
                 <button
-                  key={item.id}
-                  onClick={() => setMethod(item.id)}
-                  className={`p-2.5 rounded-xl border text-xs font-medium flex flex-col items-center gap-1 transition-all ${
-                    method === item.id 
-                      ? 'bg-blue-600/20 border-blue-500 text-white shadow-lg shadow-blue-500/10' 
-                      : 'bg-slate-950 border-white/5 text-slate-400 hover:border-white/20'
+                  key={m.id}
+                  onClick={() => setMethod(m.id)}
+                  className={`py-2 px-3 rounded-xl border text-xs font-medium transition-all ${
+                    method === m.id 
+                      ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20' 
+                      : 'bg-slate-800/60 border-white/5 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
                   }`}
                 >
-                  <span className="text-base">{item.icon}</span>
-                  <span>{item.label}</span>
+                  {m.label}
                 </button>
               ))}
             </div>
 
-            {/* 2️⃣ عرض تفاصيل المحفظة المختارة مع زر النسخ السريع */}
-            <div className="bg-slate-950 p-4 rounded-xl border border-white/5 mb-6 text-xs space-y-3">
-              {method === 'telda' && (
-                <div>
-                  <p className="text-slate-400 mb-1">حول لحساب Telda / فودافون كاش:</p>
-                  <div className="flex items-center justify-between p-2 bg-slate-900 rounded-lg border border-white/10 font-mono text-white">
-                    <span>{PAYMENT_CONFIG.telda.number}</span>
-                    <button onClick={() => handleCopy(PAYMENT_CONFIG.telda.number)} className="text-blue-400 hover:text-blue-300">
-                      {copiedText === PAYMENT_CONFIG.telda.number ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  <p className="text-[10px] text-slate-500 mt-1">معرف تيلدا: {PAYMENT_CONFIG.telda.handle}</p>
-                </div>
-              )}
+            {/* تفاصيل الحساب للدفع */}
+            <div className="bg-slate-950/60 border border-white/10 rounded-xl p-4 mb-6 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-400">{paymentDetails[method].name}</span>
+                <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded font-mono">آمن ومباشر</span>
+              </div>
 
-              {method === 'fawry' && (
-                <div>
-                  <p className="text-slate-400 mb-1">رقم المحفظة لخدمة فوري:</p>
-                  <div className="flex items-center justify-between p-2 bg-slate-900 rounded-lg border border-white/10 font-mono text-white">
-                    <span>{PAYMENT_CONFIG.fawry.code}</span>
-                    <button onClick={() => handleCopy(PAYMENT_CONFIG.fawry.code)} className="text-blue-400 hover:text-blue-300">
-                      {copiedText === PAYMENT_CONFIG.fawry.code ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-              )}
+              <div className="flex items-center justify-between bg-slate-900 p-2.5 rounded-lg border border-white/5">
+                <span className="text-xs font-mono text-white tracking-wider">{paymentDetails[method].account}</span>
+                <button 
+                  onClick={() => handleCopy(paymentDetails[method].account)}
+                  className="p-1 text-slate-400 hover:text-blue-400 transition-colors"
+                  title="نسخ"
+                >
+                  {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
 
-              {method === 'paypal' && (
-                <div>
-                  <p className="text-slate-400 mb-1">حساب PayPal المباشر:</p>
-                  <div className="flex items-center justify-between p-2 bg-slate-900 rounded-lg border border-white/10 font-mono text-white mb-2">
-                    <span>{PAYMENT_CONFIG.paypal.email}</span>
-                    <button onClick={() => handleCopy(PAYMENT_CONFIG.paypal.email)} className="text-blue-400 hover:text-blue-300">
-                      {copiedText === PAYMENT_CONFIG.paypal.email ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  <a href={PAYMENT_CONFIG.paypal.link} target="_blank" rel="noreferrer" className="text-[11px] text-blue-400 underline block">
-                    أو اضغط هنا للفتح المباشر في PayPal
-                  </a>
-                </div>
-              )}
-
-              {method === 'binance' && (
-                <div>
-                  <p className="text-slate-400 mb-1">Binance Pay ID:</p>
-                  <div className="flex items-center justify-between p-2 bg-slate-900 rounded-lg border border-white/10 font-mono text-white mb-2">
-                    <span>{PAYMENT_CONFIG.binance.payId}</span>
-                    <button onClick={() => handleCopy(PAYMENT_CONFIG.binance.payId)} className="text-blue-400 hover:text-blue-300">
-                      {copiedText === PAYMENT_CONFIG.binance.payId ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  <p className="text-slate-400 mb-1">عنوان USDT (TRC20):</p>
-                  <p className="text-[10px] font-mono text-slate-300 break-all p-2 bg-slate-900 rounded-lg border border-white/5">
-                    {PAYMENT_CONFIG.binance.usdtAddress}
-                  </p>
-                </div>
-              )}
-
-              {method === 'okx' && (
-                <div>
-                  <p className="text-slate-400 mb-1">OKX UID:</p>
-                  <div className="flex items-center justify-between p-2 bg-slate-900 rounded-lg border border-white/10 font-mono text-white">
-                    <span>{PAYMENT_CONFIG.okx.uid}</span>
-                    <button onClick={() => handleCopy(PAYMENT_CONFIG.okx.uid)} className="text-blue-400 hover:text-blue-300">
-                      {copiedText === PAYMENT_CONFIG.okx.uid ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-              )}
+              <p className="text-[11px] text-slate-500">{paymentDetails[method].note}</p>
             </div>
 
-            {/* 3️⃣ رفع الإشعار وإرسال الطلب */}
-            <form onSubmit={handleSubmitProof} className="space-y-3">
-              <div>
-                <label className="text-xs text-slate-300 mb-1 block">رقم العملية / Transaction ID (اختياري)</label>
-                <input 
-                  type="text" 
-                  value={txId}
-                  onChange={(e) => setTxId(e.target.value)}
-                  placeholder="مثال: TXN-98213812"
-                  className="w-full px-3 py-2 bg-slate-950 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs text-slate-300 mb-1 block">رفع صورة الإشعار / الوصل *</label>
-                <input 
-                  type="file" 
-                  accept="image/*"
-                  onChange={(e) => setReceipt(e.target.files[0])}
-                  required
-                  className="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-slate-800 file:text-blue-400 hover:file:bg-slate-700"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full py-2.5 mt-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2"
-              >
-                {isSubmitting ? 'جاري إرسال الإثبات...' : 'تأكيد وإرسال طلب التفعيل'}
-                <ArrowRight className="w-4 h-4 rotate-180" />
-              </button>
-            </form>
-          </>
-        ) : (
-          /* شاشة تأكيد الإرسال بنجاح */
-          <div className="text-center py-8 space-y-3">
-            <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto animate-bounce" />
-            <h3 className="text-lg font-bold text-white">تم إرسال طلب التفعيل بنجاح!</h3>
-            <p className="text-xs text-slate-400 max-w-sm mx-auto">
-              شكراً لك يا يوسف. جاري مراجعة الإشعار، وسنقوم بتفعيل الخطة فوراً.
-            </p>
             <button
-              onClick={onClose}
-              className="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded-xl border border-white/10 transition-all mt-4"
+              onClick={handleConfirmPayment}
+              className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2"
             >
-              العودة إلى AETHER Studio
+              <span>تأكيد التحويل والترقية</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
-          </div>
+          </>
         )}
 
       </div>
