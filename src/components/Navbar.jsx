@@ -1,68 +1,42 @@
-import { Sparkles, Cpu, Key, Zap } from 'lucide-react';
+import { useState } from 'react';
+import { Sparkles, User, LogIn, LogOut, ShieldCheck } from 'lucide-react';
 
-export default function Navbar({ onOpenModal }) {
+export default function Navbar({ user, onOpenAuth, onLogout }) {
   return (
-    <nav className="sticky top-0 z-40 w-full border-b border-white/10 bg-slate-950/70 backdrop-blur-xl">
-      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+    <nav className="w-full border-b border-white/10 bg-slate-950/80 backdrop-blur-md sticky top-0 z-30">
+      <div className="max-w-[1700px] mx-auto px-4 py-3 flex items-center justify-between">
         
-        {/* Brand Logo */}
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-            <Sparkles className="w-5 h-5 text-white animate-pulse" />
+        {/* Logo */}
+        <div className="flex items-center gap-2">
+          <div className="p-2 bg-blue-600/20 border border-blue-500/30 rounded-xl">
+            <Sparkles className="w-5 h-5 text-blue-400" />
           </div>
-          <div>
-            <span className="font-extrabold text-lg tracking-wider text-white">AETHER<span className="text-blue-400">.OS</span></span>
-            <span className="block text-[9px] text-slate-400 tracking-widest uppercase font-mono">Realtime AI Studio</span>
-          </div>
+          <span className="font-bold text-lg text-white tracking-wider">AETHER<span className="text-blue-500">.OS</span></span>
+          <span className="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full font-mono">v2.0</span>
         </div>
 
-        {/* Navigation Links */}
-        <div className="hidden md:flex items-center gap-6 text-xs font-medium text-slate-300">
-          <button 
-            onClick={() => onOpenModal('models')} 
-            className="flex items-center gap-1.5 hover:text-blue-400 transition-colors cursor-pointer"
-          >
-            <Cpu className="w-4 h-4 text-blue-400" />
-            Models
-          </button>
-
-          <button 
-            onClick={() => onOpenModal('apikeys')} 
-            className="flex items-center gap-1.5 hover:text-purple-400 transition-colors cursor-pointer"
-          >
-            <Key className="w-4 h-4 text-purple-400" />
-            API Keys
-          </button>
-
-          <button 
-            onClick={() => onOpenModal('pricing')} 
-            className="flex items-center gap-1.5 hover:text-amber-400 transition-colors cursor-pointer"
-          >
-            <Zap className="w-4 h-4 text-amber-400" />
-            Pricing
-          </button>
-        </div>
-
-        {/* Right CTA */}
+        {/* User Account / Auth Buttons (تم إزالة رابط GitHub بنجاح) */}
         <div className="flex items-center gap-3">
-          <a 
-            href="https://github.com/youssef23f/aether-os" 
-            target="_blank" 
-            rel="noreferrer"
-            className="p-2 rounded-xl glass-card hover:bg-white/10 text-slate-300 transition-all border border-white/10 flex items-center justify-center"
-            title="GitHub Repository"
-          >
-            <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-              <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
-            </svg>
-          </a>
-
-          <a 
-            href="#workspace"
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90 text-white text-xs font-semibold shadow-lg shadow-blue-600/20 transition-all"
-          >
-            Launch Studio
-          </a>
+          {user ? (
+            <div className="flex items-center gap-3 bg-slate-900 border border-white/10 p-1.5 pl-3 rounded-xl">
+              <img src={user.avatar || "https://api.dicebear.com/7.x/bottts/svg?seed=user"} alt="Avatar" className="w-7 h-7 rounded-lg border border-white/10" />
+              <div className="hidden sm:block text-right">
+                <p className="text-xs font-bold text-white leading-tight">{user.name}</p>
+                <span className="text-[10px] text-emerald-400 font-mono font-semibold">{user.plan || 'Free Plan'}</span>
+              </div>
+              <button onClick={onLogout} title="تسجيل الخروج" className="p-1.5 text-slate-400 hover:text-rose-400 transition-colors">
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <button 
+              onClick={onOpenAuth}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition-all shadow-lg shadow-blue-600/20"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>تسجيل الدخول</span>
+            </button>
+          )}
         </div>
 
       </div>
