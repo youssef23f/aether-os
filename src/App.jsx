@@ -3,6 +3,7 @@ import Navbar from './components/Navbar';
 import Workspace from './components/Workspace';
 import AuthModal from './components/AuthModal';
 import PricingModal from './components/PricingModal';
+import PaymentModal from './components/PaymentModal'; // 👈 استيراد مودال الدفع الجديد
 
 export default function App() {
   // حالة المستخدم
@@ -14,6 +15,8 @@ export default function App() {
   // التحكم في الـ Modals
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isPricingOpen, setIsPricingOpen] = useState(false);
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false); // 👈 حالة فتح نافذة الدفع
+  const [selectedPlan, setSelectedPlan] = useState(null);    // 👈 حفظ الخطة المختارة
 
   // حفظ بيانات المستخدم
   useEffect(() => {
@@ -32,14 +35,26 @@ export default function App() {
     setUser(null);
   };
 
-  const handleSelectPlan = (planName) => {
+  // عند اختيار خطة من PricingModal
+  const handleSelectPlan = (plan) => {
+    // 1. لو مش مسجل دخول، افتح نافذة التسجيل
     if (!user) {
       setIsPricingOpen(false);
       setIsAuthOpen(true);
       return;
     }
-    setUser(prev => ({ ...prev, plan: planName }));
+
+    // 2. لو الخطة المجانية، قم بالتحديث المباشر
+    if (typeof plan === 'string' && plan.toLowerCase() === 'free') {
+      setUser(prev => ({ ...prev, plan: 'Free' }));
+      setIsPricingOpen(false);
+      return;
+    }
+
+    // 3. لو خطة مدفوعة، اغلق الاسعار وافتح نافذة الدفع بالمحافظ
+    setSelectedPlan(typeof plan === 'object' ? plan : { name: plan, price: '$29' });
     setIsPricingOpen(false);
+    setIsPaymentOpen(true);
   };
 
   return (
@@ -71,6 +86,13 @@ export default function App() {
         onClose={() => setIsPricingOpen(false)} 
         currentPlan={user?.plan || 'Free'}
         onSelectPlan={handleSelectPlan}
+      />
+
+      {/* Payment Modal (تيلدا، فوري، بايبال، بينانس، OKX) */}
+      <PaymentModal 
+        isOpen={isPaymentOpen} 
+        onClose={() => setIsPaymentOpen(false)} 
+        selectedPlan={selectedPlan}
       />
 
     </div>
